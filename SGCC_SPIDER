@@ -1,1 +1,187 @@
 
+import  requests
+import os
+import sys
+import requests
+from requests import exceptions
+import importlib
+import os.path ,shutil
+#需要增加翻页的逻辑，暂定为翻三页，用pageno参数去拼接，加到getHtml函数中，返回的尽量是处理过的字符串
+
+#原始路径为--http://ecp.sgcc.com.cn/project_list.jsp?site=global&column_code=014001001&project_type=1&company_id=&status=&project_name=&pageNo=2
+
+
+def getHtml():
+    try:
+        for i in range(1,4):
+            base_url="http://ecp.sgcc.com.cn/project_list.jsp?site=global&column_code=014001001&project_type=1&company_id=&status=&project_name=&pageNo="
+            url=base_url+str(i)
+
+            print(url)
+
+           
+            r=requests.get(url)
+            r.raise_for_status()
+            r.encoding=r.apparent_encoding
+            filepath="c:\\mid_result\\new.txt"
+            
+            importlib.reload(sys)
+            #sys.setdefaultencoding( "utf-8" )
+            with open(filepath,'a') as wf:
+                
+                wf.write(r.text)
+
+            
+
+
+       
+    except requests.RequestException as e:
+        return ''
+def clear_old():
+    
+    if os.path.exists(r'c:\\mid_result\\new.txt'):os.remove("c:\\mid_result\\new.txt")
+    if os.path.exists(r'c:\\mid_result\\result.txt'):os.remove("c:\\mid_result\\result.txt")
+    if os.path.exists(r'c:\\mid_result\\list.txt'):os.remove("c:\\mid_result\\list.txt")
+
+def getList():
+
+    
+    
+
+    with open('c:\\mid_result\\new.txt') as file:
+
+
+        list_result=[]
+        keyStart = """onclick="showProjectDetail('014001001','"""
+
+        #keyEnd = "');>"
+        for line1 in file.readlines():
+
+            
+            
+            if keyStart in line1:
+                #print(line1.index(keyStart))
+                i=(line1.index(keyStart))
+                list_result.append(line1[i+40:i+59])
+                #print(list_result)
+    
+
+    
+    str_result=','.join(list_result)
+    print('%%%%%%%%%%%%%%%%%%')
+    print(str_result)
+    with open("c:\\mid_result\\list.txt",'a') as wflist:
+        wflist.write(str_result)
+     
+    print("Get the new list!")
+
+    
+
+
+
+
+
+def get_zipfile():
+    """
+    从getlist函数中得到关键字，拼接下载url。等到zip文件。尽量可以将
+    """
+    #首先读取新的list，并转换成set，老的list也转换成set。取差之后，拼接下载，下载后将关键字写入老的list文件
+    #是否增加解压缩待定，文件夹需要创建
+
+    with open("c:\\mid_result\\list.txt",'r') as rfnew:
+        str_new=rfnew.read()
+        print(str_new)
+        list_new=str_new.split(",")
+        
+    with open("c:\\mid_result\\oldlist.txt",'r') as rfold:
+        str_old=rfold.read()
+        print(str_old)
+        list_old=str_old.split(",")
+    key_index=list_old[0]
+    print(key_index)
+    index_new=list_new.index(key_index)
+
+    list_diff=list_new[0:index_new]
+    #使用oldlist的第一个作为判断标志，截取新的list到标识中间的为新增的关键字
+    set_diff=set(list_diff)
+
+    #set_diff=set(list_new).difference(set(list_old))#出问题的是这个
+    print('&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&')
+
+    print(len(set_diff))
+    if len(set_diff)>0:
+    
+    
+        #开始拼接下载链接子串
+        str_common="http://ecp.sgcc.com.cn/html/project/014001001/"
+        str_end=".html"
+        for strurl in set_diff:
+            url2=str_common+strurl+str_end
+            r2=requests.get(url2)
+            r2.raise_for_status()
+            r2.encoding=r2.apparent_encoding
+            filepath="c:\\mid_result\\result.txt"
+                
+            importlib.reload(sys)
+        
+            #得到二级页面的缓存文件
+            with open(filepath,'a') as wf2:
+                    
+                    wf2.write(r2.text)
+
+            list_result2=[]
+
+            with open(filepath,'r') as rf2:
+                for line in rf2.readlines():
+                    keyword=r"""<a href="/structData/"""
+                    key_end=r"""zip"><font color="blue">下载招标公告文件</font></a>"""
+                    if keyword in line  :
+                        i1=line.index(keyword)
+                        i2=line.index(key_end)
+                        # print(i1)
+                        # print(i2)
+                        # print(line[i1+21:i2-1])#最终要拿到的文件关键字
+                        list_result2.append(line[i1+21:i2-1])
+        set_final=set(list_result2)
+        print(len(set_final))
+
+        for k in set_final:
+            print(k)
+        #拼接下载地址
+            url_file_start=r"http://ecp.sgcc.com.cn/structData/"
+            url_file_end=r".zip"
+            url_file=url_file_start+str(k)+url_file_end
+            print(url_file)
+            rff=requests.get(url_file) 
+            with open("c:\\file\\"+str(k)+".zip", "wb") as zipfile:
+
+                zipfile.write(rff.content)
+                print('download!')
+        #直接将最新文件复制，修改名字为新文件即可
+    #直接将新文件覆盖旧文件
+        if os.path.exists(r'c:\\mid_result\\oldlist.txt'):os.remove("c:\\mid_result\\oldlist.txt")
+        shutil.copy("c:\\mid_result\\list.txt","c:\\mid_result\\oldlist.txt")
+
+    else:
+        print('no new file')
+
+
+
+        
+                    
+                
+                    
+
+                
+        
+
+
+if __name__ == '__main__':
+    
+
+    clear_old()
+    getHtml()
+
+    getList()
+
+    get_zipfile()
